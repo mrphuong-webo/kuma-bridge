@@ -27,3 +27,8 @@ In `Kuma Integration` settings:
 - keep existing `Kuma Base URL` and `API Key` as fallback
 
 WP Ultimo will try bridge first, then fallback to existing REST/Socket flow if bridge is not configured.
+
+## Repository layout
+
+- `app.py`, `Dockerfile`, `requirements.txt`: active bridge service.
+- `legacy-uptime-kuma/`: Node.js Uptime Kuma source fragments moved out of `wp-ultimo` during repo split/cleanup.
