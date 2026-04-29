@@ -6,10 +6,11 @@ services:
     environment:
       BRIDGE_SECRET: "CHANGE_ME_LONG_RANDOM"
       BRIDGE_MAX_SKEW_SECONDS: "300"
-      KUMA_URL: "https://uptime.bookies.top"
-      KUMA_USERNAME: "admin"
+      KUMA_URL: "https://uptime.example.com"
+      KUMA_USERNAME: "CHANGE_ME"
       KUMA_PASSWORD: "CHANGE_ME"
       REQUEST_TIMEOUT: "20"
+      KUMA_SSL_VERIFY: "1"
       BRIDGE_HOST: "0.0.0.0"
       BRIDGE_PORT: "8788"
     ports:

@@ -20,6 +20,7 @@ KUMA_URL = os.getenv("KUMA_URL", "").rstrip("/")
 KUMA_USERNAME = os.getenv("KUMA_USERNAME", "")
 KUMA_PASSWORD = os.getenv("KUMA_PASSWORD", "")
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "20"))
+KUMA_SSL_VERIFY = os.getenv("KUMA_SSL_VERIFY", "1").strip() not in ("0", "false", "False")
 KUMA_DEFAULT_NOTIFICATION_IDS = os.getenv("KUMA_DEFAULT_NOTIFICATION_IDS", "").strip()
 KUMA_NOTIFY_ON_CREATE = os.getenv("KUMA_NOTIFY_ON_CREATE", "1").strip() == "1"
 BRIDGE_ADD_RETRIES = max(1, int(os.getenv("BRIDGE_ADD_RETRIES", "3")))
@@ -112,7 +113,7 @@ def _bridge_add_monitor(payload: Dict[str, Any]) -> Dict[str, Any]:
     payload.setdefault("notificationIDList", {})
     payload.setdefault("maxretries", 3)
 
-    sio = socketio.Client(http_session=requests.Session(), ssl_verify=False, request_timeout=REQUEST_TIMEOUT)
+    sio = socketio.Client(http_session=requests.Session(), ssl_verify=KUMA_SSL_VERIFY, request_timeout=REQUEST_TIMEOUT)
     login_ack: Dict[str, Any] = {}
     add_ack: Dict[str, Any] = {}
     monitor_list_holder: Dict[str, Any] = {}

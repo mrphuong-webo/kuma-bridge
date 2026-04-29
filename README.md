@@ -48,6 +48,7 @@ Expected response:
 - `BRIDGE_MAX_SKEW_SECONDS`: max accepted request timestamp drift, default `300`.
 - `KUMA_URL`: Kuma base URL, for example `https://uptime.example.com`.
 - `KUMA_USERNAME` / `KUMA_PASSWORD`: Kuma login for Socket.IO flow.
+- `KUMA_SSL_VERIFY`: set `1` (default) to verify TLS cert, set `0` only for trusted self-signed/internal labs.
 - `REQUEST_TIMEOUT`: timeout per Socket.IO call, default `20`.
 - `BRIDGE_ADD_RETRIES`: retry attempts for transient errors, default `3`.
 - `BRIDGE_RETRY_BASE_DELAY`: base delay for retry backoff, default `2`.
@@ -61,8 +62,9 @@ In WP Ultimo > Integrations > Kuma Integration:
 
 - `Kuma Bridge URL`: `http://127.0.0.1:8788`
 - `Kuma Bridge Secret`: same as `BRIDGE_SECRET`
-- Keep `Kuma Base URL` + `Kuma API Key` filled as fallback path.
+- Keep `Kuma Base URL` + `Kuma API Key` only if you want fallback path.
 - Recommended: set `Kuma Bridge Timeout` to at least `30-60s` for unstable networks.
+- Keep "Advanced Settings" off for normal bridge-first deployments.
 
 WP Ultimo flow:
 1. Try bridge first.
