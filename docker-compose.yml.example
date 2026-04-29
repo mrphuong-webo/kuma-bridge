@@ -1,0 +1,16 @@
+services:
+  kuma-bridge:
+    build: .
+    container_name: kuma-bridge
+    restart: unless-stopped
+    environment:
+      BRIDGE_SECRET: "CHANGE_ME_LONG_RANDOM"
+      BRIDGE_MAX_SKEW_SECONDS: "300"
+      KUMA_URL: "https://uptime.bookies.top"
+      KUMA_USERNAME: "admin"
+      KUMA_PASSWORD: "CHANGE_ME"
+      REQUEST_TIMEOUT: "20"
+      BRIDGE_HOST: "0.0.0.0"
+      BRIDGE_PORT: "8788"
+    ports:
+      - "127.0.0.1:8788:8788"
