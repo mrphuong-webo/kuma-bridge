@@ -56,21 +56,7 @@ Expected response:
 - `KUMA_NOTIFY_ON_CREATE`: `1` to trigger Kuma test notification after create.
 - `FALLBACK_TELEGRAM_*`: optional direct Telegram fallback from bridge.
 
-## 4) Connect WP Ultimo
-
-In WP Ultimo > Integrations > Kuma Integration:
-
-- `Kuma Bridge URL`: `http://127.0.0.1:8788`
-- `Kuma Bridge Secret`: same as `BRIDGE_SECRET`
-- Keep `Kuma Base URL` + `Kuma API Key` only if you want fallback path.
-- Recommended: set `Kuma Bridge Timeout` to at least `30-60s` for unstable networks.
-- Keep "Advanced Settings" off for normal bridge-first deployments.
-
-WP Ultimo flow:
-1. Try bridge first.
-2. If bridge is disabled/unavailable, fallback to existing Kuma API/Socket logic.
-
-## 5) Update / Deploy New Version
+## 4) Update / Deploy New Version
 
 ```bash
 git pull
@@ -78,7 +64,7 @@ docker compose up -d --build
 docker compose logs -f --tail=100
 ```
 
-## 6) Troubleshooting
+## 5) Troubleshooting
 
 - **401 invalid signature**: `BRIDGE_SECRET` mismatch between WP Ultimo and bridge.
 - **Socket timeout**: increase `REQUEST_TIMEOUT` and WP Ultimo bridge timeout.
