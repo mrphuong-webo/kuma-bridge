@@ -1,0 +1,120 @@
+name: Deploy Kuma Bridge
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout bridge repo
+        uses: actions/checkout@v4
+
+      - name: Upload bridge files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "."
+          target: "/tmp/kuma-bridge-release"
+          rm: true
+          strip_components: 0
+          exclude: ".git"
+
+      - name: Deploy bridge service
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_DIR: /opt/kuma-bridge
+          BRIDGE_SECRET: ${{ secrets.KUMA_BRIDGE_SECRET }}
+          KUMA_URL: ${{ secrets.KUMA_URL }}
+          KUMA_USERNAME: ${{ secrets.KUMA_USERNAME }}
+          KUMA_PASSWORD: ${{ secrets.KUMA_PASSWORD }}
+          KUMA_SSL_VERIFY: ${{ vars.KUMA_SSL_VERIFY || '1' }}
+          REQUEST_TIMEOUT: ${{ vars.KUMA_REQUEST_TIMEOUT || '30' }}
+          BRIDGE_ADD_RETRIES: ${{ vars.KUMA_BRIDGE_ADD_RETRIES || '3' }}
+          BRIDGE_RETRY_BASE_DELAY: ${{ vars.KUMA_BRIDGE_RETRY_BASE_DELAY || '2' }}
+          KUMA_DEFAULT_NOTIFICATION_IDS: ${{ vars.KUMA_DEFAULT_NOTIFICATION_IDS }}
+          KUMA_NOTIFY_ON_CREATE: ${{ vars.KUMA_NOTIFY_ON_CREATE || '1' }}
+          WP_PATH: ${{ secrets.WP_PATH }}
+          WP_BRIDGE_URL: ${{ vars.WP_KUMA_BRIDGE_URL || 'http://127.0.0.1:8788' }}
+          WP_BRIDGE_TIMEOUT: ${{ vars.WP_KUMA_BRIDGE_TIMEOUT || '60' }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: DEPLOY_DIR,BRIDGE_SECRET,KUMA_URL,KUMA_USERNAME,KUMA_PASSWORD,KUMA_SSL_VERIFY,REQUEST_TIMEOUT,BRIDGE_ADD_RETRIES,BRIDGE_RETRY_BASE_DELAY,KUMA_DEFAULT_NOTIFICATION_IDS,KUMA_NOTIFY_ON_CREATE,WP_PATH,WP_BRIDGE_URL,WP_BRIDGE_TIMEOUT
+          script: |
+            set -eu
+
+            if [ -z "${BRIDGE_SECRET:-}" ] || [ -z "${KUMA_URL:-}" ] || [ -z "${KUMA_USERNAME:-}" ] || [ -z "${KUMA_PASSWORD:-}" ]; then
+              echo "Missing required Kuma bridge secrets."
+              exit 1
+            fi
+
+            if ! command -v docker >/dev/null 2>&1; then
+              curl -fsSL https://get.docker.com | sh
+            fi
+            systemctl enable --now docker >/dev/null 2>&1 || true
+
+            if ! docker compose version >/dev/null 2>&1; then
+              if command -v apt-get >/dev/null 2>&1; then
+                apt-get update
+                apt-get install -y docker-compose-plugin
+              else
+                echo "Docker Compose plugin is missing and apt-get is unavailable."
+                exit 1
+              fi
+            fi
+
+            rm -rf "$DEPLOY_DIR"
+            mkdir -p "$DEPLOY_DIR"
+            cp -a /tmp/kuma-bridge-release/. "$DEPLOY_DIR/"
+
+            cd "$DEPLOY_DIR"
+            cat > docker-compose.yml <<EOF
+            services:
+              kuma-bridge:
+                build: .
+                container_name: kuma-bridge
+                restart: unless-stopped
+                environment:
+                  BRIDGE_SECRET: "${BRIDGE_SECRET}"
+                  BRIDGE_MAX_SKEW_SECONDS: "300"
+                  KUMA_URL: "${KUMA_URL}"
+                  KUMA_USERNAME: "${KUMA_USERNAME}"
+                  KUMA_PASSWORD: "${KUMA_PASSWORD}"
+                  REQUEST_TIMEOUT: "${REQUEST_TIMEOUT}"
+                  KUMA_SSL_VERIFY: "${KUMA_SSL_VERIFY}"
+                  BRIDGE_ADD_RETRIES: "${BRIDGE_ADD_RETRIES}"
+                  BRIDGE_RETRY_BASE_DELAY: "${BRIDGE_RETRY_BASE_DELAY}"
+                  KUMA_DEFAULT_NOTIFICATION_IDS: "${KUMA_DEFAULT_NOTIFICATION_IDS}"
+                  KUMA_NOTIFY_ON_CREATE: "${KUMA_NOTIFY_ON_CREATE}"
+                  BRIDGE_HOST: "0.0.0.0"
+                  BRIDGE_PORT: "8788"
+                ports:
+                  - "127.0.0.1:8788:8788"
+            EOF
+
+            docker compose up -d --build
+            curl -fsS http://127.0.0.1:8788/healthz
+
+            if [ -n "${WP_PATH:-}" ] && command -v wp >/dev/null 2>&1; then
+              KUMA_BRIDGE_SECRET="$BRIDGE_SECRET" KUMA_BRIDGE_URL="$WP_BRIDGE_URL" KUMA_BRIDGE_TIMEOUT="$WP_BRIDGE_TIMEOUT" \
+                wp --path="$WP_PATH" eval '
+                  $settings = get_network_option(null, "wp-ultimo_v2_settings", array());
+                  if (!is_array($settings)) {
+                    $settings = array();
+                  }
+                  $settings["kuma_au_bridge_url"] = getenv("KUMA_BRIDGE_URL") ?: "http://127.0.0.1:8788";
+                  $settings["kuma_au_bridge_secret"] = getenv("KUMA_BRIDGE_SECRET") ?: "";
+                  $settings["kuma_au_bridge_timeout"] = getenv("KUMA_BRIDGE_TIMEOUT") ?: "60";
+                  $settings["kuma_au_sync_enabled"] = 1;
+                  $settings["kuma_au_auto_add_new_domain"] = 1;
+                  update_network_option(null, "wp-ultimo_v2_settings", $settings);
+                '
+            fi
