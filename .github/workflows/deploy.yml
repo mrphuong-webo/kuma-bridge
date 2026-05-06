@@ -61,10 +61,20 @@ jobs:
             fi
             systemctl enable --now docker >/dev/null 2>&1 || true
 
-            if ! docker compose version >/dev/null 2>&1; then
+            if docker compose version >/dev/null 2>&1; then
+              COMPOSE="docker compose"
+            elif command -v docker-compose >/dev/null 2>&1; then
+              COMPOSE="docker-compose"
+            else
               if command -v apt-get >/dev/null 2>&1; then
                 apt-get update
                 apt-get install -y docker-compose-plugin
+                if docker compose version >/dev/null 2>&1; then
+                  COMPOSE="docker compose"
+                else
+                  echo "Docker Compose plugin install did not expose docker compose."
+                  exit 1
+                fi
               else
                 echo "Docker Compose plugin is missing and apt-get is unavailable."
                 exit 1
@@ -100,7 +110,7 @@ jobs:
                   - "127.0.0.1:8788:8788"
             EOF
 
-            docker compose up -d --build
+            $COMPOSE up -d --build
             curl -fsS http://127.0.0.1:8788/healthz
 
             if [ -n "${WP_PATH:-}" ] && command -v wp >/dev/null 2>&1; then
