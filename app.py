@@ -65,6 +65,20 @@ def _normalize_login_ack(data: Any) -> Dict[str, Any]:
     return {}
 
 
+def _normalize_notification(notification: Dict[str, Any]) -> Dict[str, Any]:
+    config = notification.get("config")
+    if isinstance(config, str) and config.strip():
+        try:
+            parsed = json.loads(config)
+        except Exception:
+            parsed = {}
+        if isinstance(parsed, dict):
+            merged = dict(parsed)
+            merged.update(notification)
+            return merged
+    return notification
+
+
 def _call_with_step(sio: socketio.Client, event: str, data: Any = None, timeout: int = 20, step: str = "") -> Any:
     try:
         if data is None:
@@ -196,9 +210,15 @@ def _bridge_add_monitor(payload: Dict[str, Any]) -> Dict[str, Any]:
         notifications = notification_list_holder.get("data")
         if isinstance(notifications, list):
             notifications = {
-                str(notification.get("id")): notification
+                str(notification.get("id")): _normalize_notification(notification)
                 for notification in notifications
                 if isinstance(notification, dict) and notification.get("id") is not None
+            }
+        elif isinstance(notifications, dict):
+            notifications = {
+                str(notification_id): _normalize_notification(notification)
+                for notification_id, notification in notifications.items()
+                if isinstance(notification, dict)
             }
         if isinstance(notifications, dict):
             if not wanted_ids:
