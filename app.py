@@ -121,6 +121,16 @@ def _bridge_add_monitor(payload: Dict[str, Any]) -> Dict[str, Any]:
     monitor_list_event = Event()
     notification_list_event = Event()
 
+    @sio.on("monitorList")
+    def on_monitor_list(data: Any) -> None:
+        monitor_list_holder["data"] = data
+        monitor_list_event.set()
+
+    @sio.on("notificationList")
+    def on_notification_list(data: Any) -> None:
+        notification_list_holder["data"] = data
+        notification_list_event.set()
+
     try:
         sio.connect(KUMA_URL, transports=["websocket"], wait_timeout=REQUEST_TIMEOUT)
         login_res = _call_with_step(
@@ -140,16 +150,6 @@ def _bridge_add_monitor(payload: Dict[str, Any]) -> Dict[str, Any]:
             token_ack = _normalize_login_ack(token_res)
             if token_ack and not token_ack.get("ok", False):
                 raise HTTPException(status_code=401, detail=f"Kuma token login failed: {token_ack.get('msg', 'unknown')}")
-
-        @sio.on("monitorList")
-        def on_monitor_list(data: Any) -> None:
-            monitor_list_holder["data"] = data
-            monitor_list_event.set()
-
-        @sio.on("notificationList")
-        def on_notification_list(data: Any) -> None:
-            notification_list_holder["data"] = data
-            notification_list_event.set()
 
         if KUMA_DEFAULT_NOTIFICATION_IDS:
             wanted_ids = []
@@ -194,6 +194,12 @@ def _bridge_add_monitor(payload: Dict[str, Any]) -> Dict[str, Any]:
 
         notification_list_event.wait(timeout=min(2, REQUEST_TIMEOUT))
         notifications = notification_list_holder.get("data")
+        if isinstance(notifications, list):
+            notifications = {
+                str(notification.get("id")): notification
+                for notification in notifications
+                if isinstance(notification, dict) and notification.get("id") is not None
+            }
         if isinstance(notifications, dict):
             if not wanted_ids:
                 wanted_ids = [int(k) for k in notifications.keys() if str(k).isdigit()]
