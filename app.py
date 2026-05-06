@@ -169,6 +169,12 @@ def _bridge_add_monitor(payload: Dict[str, Any]) -> Dict[str, Any]:
             _call_with_step(sio, "getMonitorList", timeout=min(8, REQUEST_TIMEOUT), step="getMonitorList")
         except Exception:
             pass
+
+        try:
+            _call_with_step(sio, "getNotificationList", timeout=min(8, REQUEST_TIMEOUT), step="getNotificationList")
+        except Exception:
+            pass
+
         monitor_list_event.wait(timeout=min(2, REQUEST_TIMEOUT))
         existing_monitors = monitor_list_holder.get("data")
         if isinstance(existing_monitors, dict):
