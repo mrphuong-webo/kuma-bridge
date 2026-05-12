@@ -245,7 +245,7 @@ def _bridge_add_monitor(payload: Dict[str, Any]) -> Dict[str, Any]:
                             # Non-blocking: monitor creation already succeeded.
                             pass
 
-        _send_fallback_telegram_on_create(payload, add_ack)
+        # _send_fallback_telegram_on_create(payload, add_ack)  # Disabled: Telegram Alert Testing
 
         return add_ack
     except socketio.exceptions.ConnectionError as exc:
